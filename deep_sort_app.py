@@ -14,6 +14,18 @@ from deep_sort.detection import Detection
 from deep_sort.tracker import Tracker
 
 
+def save_binary_detection_file(detections):
+    """ 将npy文件中的数据保存为二进制文件 
+    """
+    out_put_name = '/tmp/detections.txt'
+    with open(out_put_name, 'w') as f:
+        for detection in detections:
+            for value in detection:
+                f.write(str(value))
+                f.write(',')
+            f.write('\n')
+
+
 def gather_sequence_info(sequence_dir, detection_file):
     """Gather sequence information, such as image filenames, detections,
     groundtruth (if available).
@@ -49,6 +61,7 @@ def gather_sequence_info(sequence_dir, detection_file):
     detections = None
     if detection_file is not None:
         detections = np.load(detection_file)
+    save_binary_detection_file(detections)
     groundtruth = None
     if os.path.exists(groundtruth_file):
         groundtruth = np.loadtxt(groundtruth_file, delimiter=',')
@@ -114,7 +127,7 @@ def create_detections(detection_mat, frame_idx, min_height=0):
         Returns detection responses at given frame index.
 
     """
-    frame_indices = detection_mat[:, 0].astype(np.int)
+    frame_indices = detection_mat[:, 0].astype(int)
     mask = frame_indices == frame_idx
 
     detection_list = []
@@ -224,10 +237,10 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Deep SORT")
     parser.add_argument(
         "--sequence_dir", help="Path to MOTChallenge sequence directory",
-        default=None, required=True)
+        default="./MOT16/test/MOT16-06")
     parser.add_argument(
-        "--detection_file", help="Path to custom detections.", default=None,
-        required=True)
+        "--detection_file", help="Path to custom detections.", 
+        default="./resources/detections/MOT16_POI_test/MOT16-06.npy")
     parser.add_argument(
         "--output_file", help="Path to the tracking output file. This file will"
         " contain the tracking results on completion.",
@@ -235,7 +248,7 @@ def parse_args():
     parser.add_argument(
         "--min_confidence", help="Detection confidence threshold. Disregard "
         "all detections that have a confidence lower than this value.",
-        default=0.8, type=float)
+        default=0.3, type=float)
     parser.add_argument(
         "--min_detection_height", help="Threshold on the detection bounding "
         "box height. Detections with height smaller than this value are "
@@ -248,7 +261,7 @@ def parse_args():
         "metric (object appearance).", type=float, default=0.2)
     parser.add_argument(
         "--nn_budget", help="Maximum size of the appearance descriptors "
-        "gallery. If None, no budget is enforced.", type=int, default=None)
+        "gallery. If None, no budget is enforced.", type=int, default=100)
     parser.add_argument(
         "--display", help="Show intermediate tracking results",
         default=True, type=bool_string)
