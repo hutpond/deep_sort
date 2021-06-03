@@ -60,8 +60,13 @@ def gather_sequence_info(sequence_dir, detection_file):
 
     detections = None
     if detection_file is not None:
-        detections = np.load(detection_file)
-    save_binary_detection_file(detections)
+        if detection_file.endswith('.npy'):
+            detections = np.load(detection_file)
+        else:
+            with open(detection_file, "r") as f:
+                lines = f.readlines()
+                detections = np.array([line.strip()[:-2].split(",") for line in lines], dtype=np.float)
+
     groundtruth = None
     if os.path.exists(groundtruth_file):
         groundtruth = np.loadtxt(groundtruth_file, delimiter=',')
@@ -255,7 +260,7 @@ def parse_args():
         "disregarded", default=0, type=int)
     parser.add_argument(
         "--nms_max_overlap",  help="Non-maxima suppression threshold: Maximum "
-        "detection overlap.", default=1.0, type=float)
+        "detection overlap.", default=0.3, type=float)
     parser.add_argument(
         "--max_cosine_distance", help="Gating threshold for cosine distance "
         "metric (object appearance).", type=float, default=0.2)

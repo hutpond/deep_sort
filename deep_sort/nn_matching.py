@@ -1,5 +1,6 @@
 # vim: expandtab:ts=4:sw=4
 import numpy as np
+import math
 
 
 def _pdist(a, b):
@@ -133,6 +134,7 @@ class NearestNeighborDistanceMetric(object):
         self.matching_threshold = matching_threshold
         self.budget = budget
         self.samples = {}
+        self.samples2 = {}
 
     def partial_fit(self, features, targets, active_targets):
         """Update the distance metric with new data.
@@ -174,4 +176,29 @@ class NearestNeighborDistanceMetric(object):
         cost_matrix = np.zeros((len(targets), len(features)))
         for i, target in enumerate(targets):
             cost_matrix[i, :] = self._metric(self.samples[target], features)
+        return cost_matrix
+
+    def partial_fit2(self, boxes, targets, active_targets):
+        """Update the distance metric with new data.
+
+        Parameters
+        ----------
+        features : ndarray
+            An NxM matrix of N features of dimensionality M.
+        targets : ndarray
+            An integer array of associated target identities.
+        active_targets : List[int]
+            A list of targets that are currently present in the scene.
+
+        """
+        for feature, target in zip(boxes, targets):
+            self.samples.setdefault(target, []).append(feature)
+            if self.budget is not None:
+                self.samples[target] = self.samples[target][-self.budget:]
+        self.samples = {k: self.samples[k] for k in active_targets}
+
+    def distance2(self, boxes, targets):
+        cost_matrix = np.zeros((len(targets), len(boxes)))
+        for i, target in enumerate(targets):
+            cost_matrix[i, :] = [math.sqrt((box[0] - target[0]) ** 2 + (box[1] - target[1]) ** 2) for box in boxes]
         return cost_matrix
