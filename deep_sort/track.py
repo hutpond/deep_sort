@@ -111,6 +111,16 @@ class Track:
         ret[2:] = ret[:2] + ret[2:]
         return ret
 
+    def to_xyah(self):
+        """Convert bounding box to format `(center x, center y, aspect ratio,
+        height)`, where the aspect ratio is `width / height`.
+        """
+        ret = self.to_tlwh()
+        ret[:2] += ret[2:] / 2
+        ret[2] /= ret[3]
+        return ret
+
+
     def predict(self, kf):
         """Propagate the state distribution to the current time step using a
         Kalman filter prediction step.

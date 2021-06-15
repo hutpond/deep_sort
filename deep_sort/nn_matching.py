@@ -183,22 +183,29 @@ class NearestNeighborDistanceMetric(object):
 
         Parameters
         ----------
-        features : ndarray
-            An NxM matrix of N features of dimensionality M.
+        boxes : ndarray
+            NxM 矩阵 N个检测框 M对应检测框数据维数
         targets : ndarray
-            An integer array of associated target identities.
+            已匹配的目标的跟踪ID，个数等于检测框个数，数值相同
         active_targets : List[int]
-            A list of targets that are currently present in the scene.
+            已匹配的目标的跟踪ID
 
         """
-        for feature, target in zip(boxes, targets):
-            self.samples.setdefault(target, []).append(feature)
+        for box, target in zip(boxes, targets):
+            self.samples2.setdefault(target, []).append(box)
             if self.budget is not None:
-                self.samples[target] = self.samples[target][-self.budget:]
-        self.samples = {k: self.samples[k] for k in active_targets}
+                self.samples2[target] = self.samples2[target][-self.budget:]
+        self.samples2 = {k: self.samples2[k] for k in active_targets}
 
     def distance2(self, boxes, targets):
         cost_matrix = np.zeros((len(targets), len(boxes)))
         for i, target in enumerate(targets):
-            cost_matrix[i, :] = [math.sqrt((box[0] - target[0]) ** 2 + (box[1] - target[1]) ** 2) for box in boxes]
+            cost_matrix[i, :] = self._metric(self.samples2[target], boxes)
+        return cost_matrix
+
+    def distance3(self, boxes, targets):
+        cost_matrix = np.zeros((len(targets), len(boxes)))
+        for i, target in enumerate(targets):
+            for j, box in enumerate(boxes):
+                cost_matrix[i, j] = math.sqrt((box[0] - target[0]) ** 2 + (box[1] - target[1]) ** 2)
         return cost_matrix

@@ -12,10 +12,11 @@ from application_util import visualization
 from deep_sort import nn_matching
 from deep_sort.detection import Detection
 from deep_sort.tracker import Tracker
+from deep_sort.mot_calculate import MotAssessment
 
 
 def save_binary_detection_file(detections):
-    """ 将npy文件中的数据保存为二进制文件 
+    """ 将npy文件中的数据保存到文件 
     """
     out_put_name = '/tmp/detections.txt'
     with open(out_put_name, 'w') as f:
@@ -65,7 +66,7 @@ def gather_sequence_info(sequence_dir, detection_file):
         else:
             with open(detection_file, "r") as f:
                 lines = f.readlines()
-                detections = np.array([line.strip()[:-2].split(",") for line in lines], dtype=np.float)
+                detections = np.array([line.strip()[:-2].split(",") for line in lines], dtype=float)
 
     groundtruth = None
     if os.path.exists(groundtruth_file):
@@ -181,6 +182,12 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
     tracker = Tracker(metric)
     results = []
 
+    # MOT
+    name = "./PETS09-S2L1/gt/gt.txt"
+    # name = "./MOT16-04/det/det.txt"
+    dis_thres = 40.0
+    mot_asses = MotAssessment(name, dis_thres)
+
     def frame_callback(vis, frame_idx):
         print("Processing frame %05d" % frame_idx)
 
@@ -200,6 +207,17 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
         tracker.predict()
         tracker.update(detections)
 
+        # MOT
+        track_boxes = []
+        for track in tracker.tracks:
+            if not track.is_confirmed() or track.time_since_update > 0:
+                continue
+            bbox = track.to_tlbr()
+            track_boxes.append([track.track_id] + track.to_tlbr().tolist())
+        mot_asses.add_detections(frame_idx, track_boxes)
+        values = mot_asses.calculate()
+        print(values)
+
         # Update visualization.
         if display:
             image = cv2.imread(
@@ -210,7 +228,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
 
         # Store results.
         for track in tracker.tracks:
-            if not track.is_confirmed() or track.time_since_update > 1:
+            if not track.is_confirmed() or track.time_since_update > 0:
                 continue
             bbox = track.to_tlwh()
             results.append([
@@ -242,10 +260,12 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Deep SORT")
     parser.add_argument(
         "--sequence_dir", help="Path to MOTChallenge sequence directory",
-        default="./MOT16/test/MOT16-06")
+        default="./PETS09-S2L1/")
+        # default="./MOT16/test/MOT16-06")
     parser.add_argument(
         "--detection_file", help="Path to custom detections.", 
-        default="./resources/detections/MOT16_POI_test/MOT16-06.npy")
+        # default="./resources/detections/MOT16_POI_test/MOT16-06.npy")
+        default="./PETS09-S2L1/det/det.txt")
     parser.add_argument(
         "--output_file", help="Path to the tracking output file. This file will"
         " contain the tracking results on completion.",

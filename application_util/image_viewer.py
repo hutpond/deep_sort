@@ -298,7 +298,7 @@ class ImageViewer(object):
         if update_fun is not None:
             self._user_fun = update_fun
 
-        self._terminate, is_paused = False, False
+        self._terminate, is_paused = False, True
         # print("ImageViewer is paused, press space to start.")
         while not self._terminate:
             t0 = time.time()

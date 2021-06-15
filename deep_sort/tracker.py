@@ -81,24 +81,26 @@ class Tracker:
         # 删除丢失track
         self.tracks = [t for t in self.tracks if not t.is_deleted()]
 
-        # Update distance metric.
+        # 已匹配的ID
         active_targets = [t.track_id for t in self.tracks if t.is_confirmed()]
         features, targets = [], []
         boxes = []
+        # 所有的已匹配track的特征、boxes、ID
         for track in self.tracks:
             if not track.is_confirmed():
                 continue
             features += track.features
-            targets += [track.track_id for _ in track.features]
+            # targets += [track.track_id for _ in track.features]
             track.features = []
 
+            targets += [track.track_id for _ in track.boxes]
             boxes += track.boxes
             track.boxes = []
 
-        self.metric.partial_fit(
-            np.asarray(features), np.asarray(targets), active_targets)
-        # self.metric.partial_fit2(
-        #     np.asarray(boxes), np.asarray(targets), active_targets)
+        # self.metric.partial_fit(
+        #     np.asarray(features), np.asarray(targets), active_targets)
+        self.metric.partial_fit2(
+            np.asarray(boxes), np.asarray(targets), active_targets)
 
     def _match(self, detections):
 
@@ -107,14 +109,14 @@ class Tracker:
             """
 
             # 基于外观信息，计算tracks和detections的余弦距离代价矩阵
-            features = np.array([dets[i].feature for i in detection_indices])
-            targets = np.array([tracks[i].track_id for i in track_indices])
-            cost_matrix = self.metric.distance(features, targets)
+            # features = np.array([dets[i].feature for i in detection_indices])
+            # targets = np.array([tracks[i].track_id for i in track_indices])
+            # cost_matrix = self.metric.distance(features, targets)
 
             # 基于中心距离，计算tracks和detections的代价矩阵
-            # boxes = np.array([dets[i].to_xyah() for i in detection_indices])
-            # targets = np.array([tracks[i].track_id for i in track_indices])
-            # cost_matrix = self.metric.distance2(boxes, targets)
+            boxes = np.array([dets[i].to_xyah() for i in detection_indices])
+            targets = np.array([tracks[i].track_id for i in track_indices])
+            cost_matrix = self.metric.distance2(boxes, targets)
 
             # 基于IOU
             # cost_matrix = iou_matching.iou_cost(tracks, dets)
@@ -132,7 +134,7 @@ class Tracker:
         unconfirmed_tracks = [
             i for i, t in enumerate(self.tracks) if not t.is_confirmed()]
 
-       # 基于外观信息，对confirmd tracks进行级联匹配
+        # 基于外观信息，对confirmd tracks进行级联匹配
         matches_a, unmatched_tracks_a, unmatched_detections = \
             linear_assignment.matching_cascade(
                 gated_metric, self.metric.matching_threshold, self.max_age,
